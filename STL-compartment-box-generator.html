@@ -1,0 +1,1478 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>STL compartment box generator</title>
+  <style>
+    :root {
+      color-scheme: dark;
+      --bg: #0b0d10;
+      --panel: #151719;
+      --panel-2: #101316;
+      --line: #2c3238;
+      --line-strong: #454c54;
+      --text: #f0f4f1;
+      --muted: #a9b4ad;
+      --soft: #78837d;
+      --accent: #39d98a;
+      --accent-2: #f2b84b;
+      --danger: #ff6b6b;
+      --info: #65c7f7;
+      --input: #0f1215;
+      --shadow: 0 18px 60px rgba(0, 0, 0, 0.34);
+      --radius: 8px;
+    }
+
+    * {
+      box-sizing: border-box;
+    }
+
+    html,
+    body {
+      margin: 0;
+      min-height: 100%;
+      background: var(--bg);
+      color: var(--text);
+      font-family: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+      font-size: 15px;
+      letter-spacing: 0;
+    }
+
+    body {
+      padding: 24px;
+    }
+
+    button,
+    input,
+    select {
+      font: inherit;
+      letter-spacing: 0;
+    }
+
+    button {
+      min-height: 38px;
+      border: 1px solid var(--line-strong);
+      border-radius: 7px;
+      background: #20252a;
+      color: var(--text);
+      padding: 0 13px;
+      cursor: pointer;
+      transition: background 120ms ease, border-color 120ms ease, transform 120ms ease;
+      white-space: nowrap;
+    }
+
+    button:hover {
+      background: #293037;
+      border-color: #68717a;
+    }
+
+    button:active {
+      transform: translateY(1px);
+    }
+
+    button.primary {
+      background: #127348;
+      border-color: #1fa766;
+      color: #f6fff9;
+      font-weight: 700;
+    }
+
+    button.primary:hover {
+      background: #178958;
+    }
+
+    button.ghost {
+      background: transparent;
+    }
+
+    button.danger {
+      color: #ffd7d7;
+      border-color: #713b3b;
+      background: #291718;
+    }
+
+    button.danger:hover {
+      border-color: #a85151;
+      background: #3a1d1f;
+    }
+
+    a.button-link {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      min-height: 38px;
+      border: 1px solid #1fa766;
+      border-radius: 7px;
+      padding: 0 13px;
+      color: #f6fff9;
+      background: #127348;
+      text-decoration: none;
+      font-weight: 700;
+      white-space: nowrap;
+    }
+
+    .app {
+      max-width: 1560px;
+      margin: 0 auto;
+      display: grid;
+      gap: 18px;
+    }
+
+    .topbar {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 16px;
+      border-bottom: 1px solid var(--line);
+      padding-bottom: 18px;
+    }
+
+    h1,
+    h2,
+    h3 {
+      margin: 0;
+      line-height: 1.15;
+      letter-spacing: 0;
+    }
+
+    h1 {
+      font-size: 28px;
+      font-weight: 800;
+    }
+
+    h2 {
+      font-size: 17px;
+      font-weight: 750;
+    }
+
+    h3 {
+      font-size: 15px;
+      font-weight: 750;
+    }
+
+    .subtle {
+      color: var(--muted);
+    }
+
+    .status {
+      min-height: 26px;
+      color: var(--muted);
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      flex-wrap: wrap;
+    }
+
+    .status strong {
+      color: var(--text);
+    }
+
+    .status.error {
+      color: #ffc5c5;
+    }
+
+    .status.ok {
+      color: #c8ffdf;
+    }
+
+    .layout {
+      display: grid;
+      grid-template-columns: minmax(330px, 430px) minmax(0, 1fr);
+      gap: 18px;
+      align-items: start;
+    }
+
+    .panel {
+      background: var(--panel);
+      border: 1px solid var(--line);
+      border-radius: var(--radius);
+      box-shadow: var(--shadow);
+      overflow: clip;
+    }
+
+    .panel-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 12px;
+      padding: 14px 16px;
+      border-bottom: 1px solid var(--line);
+      background: #181b1f;
+    }
+
+    .panel-body {
+      padding: 16px;
+    }
+
+    .stack {
+      display: grid;
+      gap: 14px;
+    }
+
+    .settings-grid {
+      display: grid;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      gap: 10px;
+    }
+
+    .field {
+      display: grid;
+      gap: 6px;
+      min-width: 0;
+    }
+
+    label {
+      color: var(--muted);
+      font-size: 12px;
+      line-height: 1.25;
+    }
+
+    input,
+    select {
+      width: 100%;
+      min-height: 38px;
+      border: 1px solid var(--line);
+      border-radius: 7px;
+      background: var(--input);
+      color: var(--text);
+      padding: 8px 10px;
+      outline: none;
+    }
+
+    input:focus,
+    select:focus {
+      border-color: var(--accent);
+      box-shadow: 0 0 0 3px rgba(57, 217, 138, 0.12);
+    }
+
+    input[type="checkbox"] {
+      width: 18px;
+      min-height: 18px;
+      accent-color: var(--accent);
+    }
+
+    .check-row {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      min-height: 38px;
+      color: var(--muted);
+    }
+
+    .form-grid {
+      display: grid;
+      grid-template-columns: 1.4fr 0.72fr 0.72fr 0.72fr 0.72fr;
+      gap: 10px;
+    }
+
+    .form-grid .wide {
+      grid-column: span 2;
+    }
+
+    .actions {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      flex-wrap: wrap;
+    }
+
+    .main-grid {
+      display: grid;
+      gap: 18px;
+    }
+
+    .table-wrap {
+      overflow-x: auto;
+      border: 1px solid var(--line);
+      border-radius: var(--radius);
+      background: var(--panel-2);
+    }
+
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      min-width: 760px;
+    }
+
+    th,
+    td {
+      padding: 10px 12px;
+      border-bottom: 1px solid var(--line);
+      text-align: left;
+      vertical-align: middle;
+    }
+
+    th {
+      color: var(--muted);
+      font-size: 12px;
+      font-weight: 700;
+      background: #181b1f;
+    }
+
+    td {
+      color: var(--text);
+    }
+
+    tbody tr:last-child td {
+      border-bottom: 0;
+    }
+
+    .num {
+      font-variant-numeric: tabular-nums;
+    }
+
+    .tag {
+      display: inline-flex;
+      min-height: 24px;
+      align-items: center;
+      border-radius: 6px;
+      padding: 2px 8px;
+      border: 1px solid var(--line);
+      color: var(--muted);
+      background: #111417;
+      white-space: nowrap;
+    }
+
+    .results {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(320px, 1fr));
+      gap: 14px;
+    }
+
+    .result {
+      border: 1px solid var(--line);
+      border-radius: var(--radius);
+      overflow: clip;
+      background: var(--panel-2);
+    }
+
+    .result-head {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 10px;
+      padding: 12px;
+      border-bottom: 1px solid var(--line);
+      background: #181b1f;
+    }
+
+    .result-meta {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 6px;
+      margin-top: 6px;
+    }
+
+    .preview {
+      width: 100%;
+      aspect-ratio: 250 / 220;
+      display: block;
+      background: #080a0c;
+    }
+
+    .download-row {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      flex-wrap: wrap;
+      padding: 12px;
+      border-top: 1px solid var(--line);
+    }
+
+    .empty-state {
+      min-height: 170px;
+      display: grid;
+      place-items: center;
+      color: var(--soft);
+      border: 1px dashed var(--line-strong);
+      border-radius: var(--radius);
+      background: var(--panel-2);
+      text-align: center;
+      padding: 20px;
+    }
+
+    .split-row {
+      display: flex;
+      align-items: end;
+      gap: 10px;
+      flex-wrap: wrap;
+    }
+
+    .split-row .grow {
+      flex: 1 1 220px;
+    }
+
+    .accent-line {
+      height: 3px;
+      background: linear-gradient(90deg, var(--accent), var(--accent-2), var(--danger));
+    }
+
+    @media (max-width: 1100px) {
+      body {
+        padding: 16px;
+      }
+
+      .layout {
+        grid-template-columns: 1fr;
+      }
+    }
+
+    @media (max-width: 680px) {
+      h1 {
+        font-size: 23px;
+      }
+
+      .topbar {
+        align-items: flex-start;
+        flex-direction: column;
+      }
+
+      .settings-grid,
+      .form-grid {
+        grid-template-columns: 1fr;
+      }
+
+      .form-grid .wide {
+        grid-column: span 1;
+      }
+
+      button,
+      a.button-link {
+        width: 100%;
+      }
+    }
+  </style>
+</head>
+<body>
+  <div class="app">
+    <header class="topbar">
+      <div>
+        <h1>STL compartment box generator</h1>
+        <div class="status" id="status">250 x 220 mm, open top, automatic multi-STL output.</div>
+      </div>
+      <div class="actions">
+        <button class="ghost" id="loadSampleBtn" type="button">Sample</button>
+        <button class="primary" id="generateBtn" type="button">Generate STL</button>
+      </div>
+    </header>
+
+    <main class="layout">
+      <aside class="stack">
+        <section class="panel">
+          <div class="accent-line"></div>
+          <div class="panel-header">
+            <h2>Box</h2>
+            <span class="tag">mm</span>
+          </div>
+          <div class="panel-body stack">
+            <div class="settings-grid">
+              <div class="field">
+                <label for="outerWidth">Outer width</label>
+                <input id="outerWidth" type="number" min="1" step="0.1" value="250">
+              </div>
+              <div class="field">
+                <label for="outerDepth">Outer depth</label>
+                <input id="outerDepth" type="number" min="1" step="0.1" value="220">
+              </div>
+              <div class="field">
+                <label for="baseThickness">Base</label>
+                <input id="baseThickness" type="number" min="0.1" step="0.1" value="2">
+              </div>
+              <div class="field">
+                <label for="wallThickness">Side wall</label>
+                <input id="wallThickness" type="number" min="0.1" step="0.1" value="1.6">
+              </div>
+              <div class="field">
+                <label for="dividerThickness">Divider</label>
+                <input id="dividerThickness" type="number" min="0.1" step="0.1" value="1.2">
+              </div>
+              <div class="field">
+                <label for="sideClearance">Side clearance</label>
+                <input id="sideClearance" type="number" min="0" step="0.01" value="0.15">
+              </div>
+              <div class="field">
+                <label for="extraClearance">Extra clearance</label>
+                <input id="extraClearance" type="number" min="0" step="0.1" value="8">
+              </div>
+              <div class="field">
+                <label for="verticalClearance">Height clearance</label>
+                <input id="verticalClearance" type="number" min="0" step="0.1" value="0">
+              </div>
+              <div class="field">
+                <label for="interlockLegLength">L leg length</label>
+                <input id="interlockLegLength" type="number" min="0" step="0.1" value="10">
+              </div>
+              <div class="field">
+                <label for="bottomNotchDepth">Bottom notch depth</label>
+                <input id="bottomNotchDepth" type="number" min="0" step="0.1" value="2">
+              </div>
+              <div class="field">
+                <label for="bottomNotchThickness">Bottom L thickness</label>
+                <input id="bottomNotchThickness" type="number" min="0" step="0.1" value="1.6">
+              </div>
+              <div class="field">
+                <label for="topLipThickness">Top L thickness</label>
+                <input id="topLipThickness" type="number" min="0" step="0.1" value="1.2">
+              </div>
+              <div class="field">
+                <label for="topLipHeight">Top L height</label>
+                <input id="topLipHeight" type="number" min="0" step="0.1" value="2">
+              </div>
+              <div class="field">
+                <label for="defaultExtraAxis">Default extra axis</label>
+                <select id="defaultExtraAxis">
+                  <option value="auto">auto</option>
+                  <option value="width">width</option>
+                  <option value="depth">depth</option>
+                  <option value="longer">longer side</option>
+                  <option value="shorter">shorter side</option>
+                  <option value="none">none</option>
+                </select>
+              </div>
+            </div>
+            <label class="check-row" for="addLeftoverCompartments">
+              <input id="addLeftoverCompartments" type="checkbox" checked>
+              Keep leftover compartments
+            </label>
+            <label class="check-row" for="addInterlock">
+              <input id="addInterlock" type="checkbox" checked>
+              L-shaped stacking fit
+            </label>
+          </div>
+        </section>
+
+        <section class="panel">
+          <div class="panel-header">
+            <h2>Item</h2>
+            <span class="tag">list</span>
+          </div>
+          <div class="panel-body stack">
+            <div class="form-grid">
+              <div class="field wide">
+                <label for="itemName">Name</label>
+                <input id="itemName" type="text" value="new_item">
+              </div>
+              <div class="field">
+                <label for="itemCount">Count</label>
+                <input id="itemCount" type="number" min="1" step="1" value="1">
+              </div>
+              <div class="field">
+                <label for="itemWidth">Width</label>
+                <input id="itemWidth" type="number" min="0.1" step="0.1" value="30">
+              </div>
+              <div class="field">
+                <label for="itemDepth">Depth</label>
+                <input id="itemDepth" type="number" min="0.1" step="0.1" value="20">
+              </div>
+              <div class="field">
+                <label for="itemHeight">Height</label>
+                <input id="itemHeight" type="number" min="0.1" step="0.1" value="12">
+              </div>
+              <div class="field wide">
+                <label for="itemExtraAxis">Extra axis</label>
+                <select id="itemExtraAxis">
+                  <option value="auto">auto</option>
+                  <option value="width">width</option>
+                  <option value="depth">depth</option>
+                  <option value="longer">longer side</option>
+                  <option value="shorter">shorter side</option>
+                  <option value="none">none</option>
+                </select>
+              </div>
+              <label class="check-row" for="itemRotate">
+                <input id="itemRotate" type="checkbox" checked>
+                Rotatable
+              </label>
+            </div>
+            <div class="actions">
+              <button id="addItemBtn" type="button">Add item</button>
+              <button class="ghost" id="clearItemsBtn" type="button">Clear list</button>
+            </div>
+          </div>
+        </section>
+      </aside>
+
+      <section class="main-grid">
+        <section class="panel">
+          <div class="panel-header">
+            <h2>Item list</h2>
+            <span class="tag" id="itemCounter">0 rows</span>
+          </div>
+          <div class="panel-body">
+            <div class="table-wrap">
+              <table>
+                <thead>
+                  <tr>
+                    <th>Name</th>
+                    <th>Count</th>
+                    <th>Footprint</th>
+                    <th>Height</th>
+                    <th>Extra</th>
+                    <th>Rotation</th>
+                    <th></th>
+                  </tr>
+                </thead>
+                <tbody id="itemsBody"></tbody>
+              </table>
+            </div>
+          </div>
+        </section>
+
+        <section class="panel">
+          <div class="panel-header">
+            <h2>STL output</h2>
+            <span class="tag" id="boxCounter">not generated</span>
+          </div>
+          <div class="panel-body">
+            <div id="results" class="results">
+              <div class="empty-state">Generated boxes will appear here.</div>
+            </div>
+          </div>
+        </section>
+      </section>
+    </main>
+  </div>
+
+  <script>
+    "use strict";
+
+    const EPS = 1e-7;
+    const $ = (id) => document.getElementById(id);
+    const state = {
+      items: [],
+      downloads: [],
+      lastSummaryUrl: null
+    };
+
+    const sampleItems = [
+      { name: "Item_A", count: 8, width: 32, depth: 18, height: 12, extraAxis: "auto", rotate: true },
+      { name: "Item_B", count: 6, width: 45, depth: 28, height: 18, extraAxis: "depth", rotate: true },
+      { name: "Item_C", count: 4, width: 60, depth: 22, height: 15, extraAxis: "width", rotate: true },
+      { name: "Item_D", count: 2, width: 85, depth: 40, height: 25, extraAxis: "auto", rotate: true }
+    ];
+
+    function readNumber(id, label) {
+      const value = Number($(id).value);
+      if (!Number.isFinite(value)) {
+        throw new Error(label + " is not a number.");
+      }
+      return value;
+    }
+
+    function readPositive(id, label) {
+      const value = readNumber(id, label);
+      if (value <= 0) {
+        throw new Error(label + " must be greater than zero.");
+      }
+      return value;
+    }
+
+    function readNonNegative(id, label) {
+      const value = readNumber(id, label);
+      if (value < 0) {
+        throw new Error(label + " cannot be negative.");
+      }
+      return value;
+    }
+
+    function readConfig() {
+      const cfg = {
+        outerWidth: readPositive("outerWidth", "Outer width"),
+        outerDepth: readPositive("outerDepth", "Outer depth"),
+        baseThickness: readPositive("baseThickness", "Base"),
+        wallThickness: readPositive("wallThickness", "Side wall"),
+        dividerThickness: readPositive("dividerThickness", "Divider"),
+        sideClearance: readNonNegative("sideClearance", "Side clearance"),
+        extraClearance: readNonNegative("extraClearance", "Extra clearance"),
+        verticalClearance: readNonNegative("verticalClearance", "Height clearance"),
+        defaultExtraAxis: normalizeAxis($("defaultExtraAxis").value),
+        addLeftoverCompartments: $("addLeftoverCompartments").checked,
+        minLeftoverCompartment: 6,
+        addInterlock: $("addInterlock").checked,
+        interlockLegLength: readNonNegative("interlockLegLength", "L leg length"),
+        bottomNotchDepth: readNonNegative("bottomNotchDepth", "Bottom notch depth"),
+        bottomNotchThickness: readNonNegative("bottomNotchThickness", "Bottom L thickness"),
+        topLipHeight: readNonNegative("topLipHeight", "Top L height"),
+        topLipThickness: readNonNegative("topLipThickness", "Top L thickness")
+      };
+      cfg.innerWidth = cfg.outerWidth - 2 * cfg.wallThickness;
+      cfg.innerDepth = cfg.outerDepth - 2 * cfg.wallThickness;
+      if (cfg.innerWidth <= 0 || cfg.innerDepth <= 0) {
+        throw new Error("The side wall is too thick for this outer size.");
+      }
+      return cfg;
+    }
+
+    function normalizeAxis(value) {
+      const text = String(value || "auto").trim().toLowerCase();
+      const aliases = {
+        x: "width",
+        w: "width",
+        width: "width",
+        y: "depth",
+        d: "depth",
+        depth: "depth",
+        auto: "auto",
+        either: "auto",
+        none: "none",
+        longer: "longer",
+        shorter: "shorter"
+      };
+      if (!aliases[text]) {
+        throw new Error("Unknown extra axis: " + value);
+      }
+      return aliases[text];
+    }
+
+    function setStatus(text, kind) {
+      const node = $("status");
+      node.className = "status" + (kind ? " " + kind : "");
+      node.innerHTML = text;
+    }
+
+    function escapeHtml(value) {
+      return String(value)
+        .replaceAll("&", "&amp;")
+        .replaceAll("<", "&lt;")
+        .replaceAll(">", "&gt;")
+        .replaceAll('"', "&quot;")
+        .replaceAll("'", "&#039;");
+    }
+
+    function fmt(value, digits = 2) {
+      if (!Number.isFinite(value)) return "";
+      const fixed = value.toFixed(digits);
+      return fixed.replace(/\.?0+$/, "");
+    }
+
+    function cloneItem(item) {
+      return {
+        name: String(item.name),
+        count: Number(item.count),
+        width: Number(item.width),
+        depth: Number(item.depth),
+        height: Number(item.height),
+        extraAxis: normalizeAxis(item.extraAxis),
+        rotate: Boolean(item.rotate)
+      };
+    }
+
+    function addItemFromForm() {
+      const name = $("itemName").value.trim() || "item";
+      const count = Math.max(1, Math.floor(readPositive("itemCount", "Count")));
+      const item = {
+        name,
+        count,
+        width: readPositive("itemWidth", "Width"),
+        depth: readPositive("itemDepth", "Depth"),
+        height: readPositive("itemHeight", "Height"),
+        extraAxis: normalizeAxis($("itemExtraAxis").value),
+        rotate: $("itemRotate").checked
+      };
+      state.items.push(item);
+      renderItems();
+      setStatus("<strong>" + escapeHtml(name) + "</strong> added.", "ok");
+    }
+
+    function renderItems() {
+      const tbody = $("itemsBody");
+      tbody.innerHTML = "";
+      state.items.forEach((item, index) => {
+        const tr = document.createElement("tr");
+        tr.innerHTML = `
+          <td><strong>${escapeHtml(item.name)}</strong></td>
+          <td class="num">${item.count}</td>
+          <td class="num">${fmt(item.width)} x ${fmt(item.depth)} mm</td>
+          <td class="num">${fmt(item.height)} mm</td>
+          <td><span class="tag">${escapeHtml(axisLabel(item.extraAxis))}</span></td>
+          <td>${item.rotate ? "yes" : "no"}</td>
+          <td><button class="danger" type="button" data-remove="${index}">Delete</button></td>
+        `;
+        tbody.appendChild(tr);
+      });
+      const rowCount = state.items.length;
+      const pieceCount = totalItemCount();
+      $("itemCounter").textContent = rowCount + " " + plural(rowCount, "row") + ", " + pieceCount + " " + plural(pieceCount, "pc", "pcs");
+      tbody.querySelectorAll("button[data-remove]").forEach((button) => {
+        button.addEventListener("click", () => {
+          const index = Number(button.dataset.remove);
+          state.items.splice(index, 1);
+          renderItems();
+          setStatus("Row deleted.", "");
+        });
+      });
+    }
+
+    function totalItemCount() {
+      return state.items.reduce((sum, item) => sum + item.count, 0);
+    }
+
+    function plural(count, singular, pluralForm) {
+      return count === 1 ? singular : (pluralForm || singular + "s");
+    }
+
+    function axisLabel(axis) {
+      return {
+        width: "width",
+        depth: "depth",
+        auto: "auto",
+        longer: "longer",
+        shorter: "shorter",
+        none: "none"
+      }[axis] || axis;
+    }
+
+    function extraAxisOptions(axis, width, depth) {
+      if (axis === "auto") return ["width", "depth"];
+      if (axis === "longer") return [width >= depth ? "width" : "depth"];
+      if (axis === "shorter") return [width < depth ? "width" : "depth"];
+      if (axis === "none") return ["none"];
+      return [axis];
+    }
+
+    function candidatesFor(instance, cfg) {
+      const result = [];
+      const seen = new Set();
+      const axes = extraAxisOptions(instance.extraAxis, instance.width, instance.depth);
+      axes.forEach((axis) => {
+        const addW = axis === "width" ? cfg.extraClearance : 0;
+        const addD = axis === "depth" ? cfg.extraClearance : 0;
+        const cavityW = instance.width + 2 * cfg.sideClearance + addW;
+        const cavityD = instance.depth + 2 * cfg.sideClearance + addD;
+        const orientations = [{ cw: cavityW, cd: cavityD, rotated: false }];
+        if (instance.rotate) {
+          orientations.push({ cw: cavityD, cd: cavityW, rotated: true });
+        }
+        orientations.forEach((orientation) => {
+          const candidate = {
+            cavityWidth: orientation.cw,
+            cavityDepth: orientation.cd,
+            moduleWidth: orientation.cw + cfg.dividerThickness,
+            moduleDepth: orientation.cd + cfg.dividerThickness,
+            rotated: orientation.rotated,
+            extraAxis: axis
+          };
+          const key = [
+            Math.round(candidate.cavityWidth * 1000),
+            Math.round(candidate.cavityDepth * 1000),
+            Math.round(candidate.moduleWidth * 1000),
+            Math.round(candidate.moduleDepth * 1000),
+            candidate.rotated ? 1 : 0,
+            candidate.extraAxis
+          ].join(":");
+          if (!seen.has(key)) {
+            seen.add(key);
+            result.push(candidate);
+          }
+        });
+      });
+      return result;
+    }
+
+    function makeInstances(items) {
+      const instances = [];
+      items.forEach((item) => {
+        for (let i = 1; i <= item.count; i += 1) {
+          instances.push({
+            name: item.name,
+            index: i,
+            width: item.width,
+            depth: item.depth,
+            height: item.height,
+            extraAxis: item.extraAxis,
+            rotate: item.rotate
+          });
+        }
+      });
+      return instances;
+    }
+
+    function rect(x, y, w, d) {
+      return { x, y, w, d, x2: x + w, y2: y + d, area: w * d };
+    }
+
+    function refreshRect(r) {
+      r.x2 = r.x + r.w;
+      r.y2 = r.y + r.d;
+      r.area = r.w * r.d;
+      return r;
+    }
+
+    function intersects(a, b) {
+      return a.x < b.x2 - EPS && a.x2 > b.x + EPS && a.y < b.y2 - EPS && a.y2 > b.y + EPS;
+    }
+
+    function contains(a, b) {
+      return a.x <= b.x + EPS && a.y <= b.y + EPS && a.x2 >= b.x2 - EPS && a.y2 >= b.y2 - EPS;
+    }
+
+    function splitFreeRect(free, used) {
+      if (!intersects(free, used)) return [free];
+      const result = [];
+      if (used.x > free.x + EPS) result.push(rect(free.x, free.y, used.x - free.x, free.d));
+      if (used.x2 < free.x2 - EPS) result.push(rect(used.x2, free.y, free.x2 - used.x2, free.d));
+      if (used.y > free.y + EPS) result.push(rect(free.x, free.y, free.w, used.y - free.y));
+      if (used.y2 < free.y2 - EPS) result.push(rect(free.x, used.y2, free.w, free.y2 - used.y2));
+      return result.filter((r) => r.w > EPS && r.d > EPS);
+    }
+
+    function pruneFreeRects(rects) {
+      return rects.filter((candidate, i) => {
+        for (let j = 0; j < rects.length; j += 1) {
+          if (i !== j && contains(rects[j], candidate)) return false;
+        }
+        return true;
+      });
+    }
+
+    function scoreLess(a, b) {
+      for (let i = 0; i < a.length; i += 1) {
+        if (Math.abs(a[i] - b[i]) > EPS) return a[i] < b[i];
+      }
+      return false;
+    }
+
+    function findBestPosition(box, candidates) {
+      let best = null;
+      box.freeRects.forEach((free) => {
+        candidates.forEach((candidate) => {
+          if (candidate.moduleWidth <= free.w + EPS && candidate.moduleDepth <= free.d + EPS) {
+            const leftoverX = free.w - candidate.moduleWidth;
+            const leftoverY = free.d - candidate.moduleDepth;
+            const score = [
+              free.area - candidate.moduleWidth * candidate.moduleDepth,
+              Math.min(leftoverX, leftoverY),
+              Math.max(leftoverX, leftoverY)
+            ];
+            const used = rect(free.x, free.y, candidate.moduleWidth, candidate.moduleDepth);
+            if (!best || scoreLess(score, best.score)) {
+              best = { score, used, candidate };
+            }
+          }
+        });
+      });
+      return best;
+    }
+
+    function placeInBox(box, instance, used, candidate) {
+      box.placements.push({
+        itemName: instance.name,
+        itemIndex: instance.index,
+        x: used.x,
+        y: used.y,
+        moduleWidth: candidate.moduleWidth,
+        moduleDepth: candidate.moduleDepth,
+        cavityWidth: candidate.cavityWidth,
+        cavityDepth: candidate.cavityDepth,
+        itemWidth: instance.width,
+        itemDepth: instance.depth,
+        itemHeight: instance.height,
+        rotated: candidate.rotated,
+        extraAxis: candidate.extraAxis,
+        isLeftover: false
+      });
+      const updated = [];
+      box.freeRects.forEach((free) => {
+        updated.push(...splitFreeRect(free, used));
+      });
+      box.freeRects = pruneFreeRects(updated.map(refreshRect));
+    }
+
+    function packItems(items, cfg) {
+      const instances = makeInstances(items);
+      const packed = [];
+      instances.sort((a, b) => {
+        const aArea = Math.max(...candidatesFor(a, cfg).map((c) => c.moduleWidth * c.moduleDepth));
+        const bArea = Math.max(...candidatesFor(b, cfg).map((c) => c.moduleWidth * c.moduleDepth));
+        if (Math.abs(bArea - aArea) > EPS) return bArea - aArea;
+        return b.height - a.height;
+      });
+
+      instances.forEach((instance) => {
+        const possible = candidatesFor(instance, cfg).filter(
+          (c) => c.moduleWidth <= cfg.innerWidth + EPS && c.moduleDepth <= cfg.innerDepth + EPS
+        );
+        if (!possible.length) {
+          const dims = candidatesFor(instance, cfg)
+            .map((c) => fmt(c.moduleWidth) + "x" + fmt(c.moduleDepth))
+            .join(", ");
+          throw new Error(instance.name + " #" + instance.index + " does not fit. Module sizes: " + dims);
+        }
+
+        let bestBox = null;
+        let bestPosition = null;
+        packed.forEach((box) => {
+          const position = findBestPosition(box, possible);
+          if (position && (!bestPosition || scoreLess(position.score, bestPosition.score))) {
+            bestBox = box;
+            bestPosition = position;
+          }
+        });
+
+        if (!bestBox || !bestPosition) {
+          bestBox = {
+            number: packed.length + 1,
+            freeRects: [rect(0, 0, cfg.innerWidth, cfg.innerDepth)],
+            placements: []
+          };
+          packed.push(bestBox);
+          bestPosition = findBestPosition(bestBox, possible);
+          if (!bestPosition) {
+            throw new Error(instance.name + " cannot be placed in a new box.");
+          }
+        }
+        placeInBox(bestBox, instance, bestPosition.used, bestPosition.candidate);
+      });
+      packed.forEach((box) => addLeftoverCompartments(box, cfg));
+      return packed;
+    }
+
+    function sortedUnique(values) {
+      const map = new Map();
+      values.forEach((value) => {
+        map.set(String(Math.round(value * 1000000)), value);
+      });
+      return Array.from(map.values()).sort((a, b) => a - b);
+    }
+
+    function addLeftoverCompartments(box, cfg) {
+      if (!cfg.addLeftoverCompartments) return;
+      const placedRects = box.placements.filter((p) => !p.isLeftover).map((p) => rect(p.x, p.y, p.moduleWidth, p.moduleDepth));
+      if (!placedRects.length) return;
+      const xs = sortedUnique([0, cfg.innerWidth, ...placedRects.flatMap((r) => [r.x, r.x2])]);
+      const ys = sortedUnique([0, cfg.innerDepth, ...placedRects.flatMap((r) => [r.y, r.y2])]);
+      const occupied = [];
+      for (let yi = 0; yi < ys.length - 1; yi += 1) {
+        const row = [];
+        const cy = (ys[yi] + ys[yi + 1]) / 2;
+        for (let xi = 0; xi < xs.length - 1; xi += 1) {
+          const cx = (xs[xi] + xs[xi + 1]) / 2;
+          row.push(placedRects.some((r) => r.x <= cx && cx <= r.x2 && r.y <= cy && cy <= r.y2));
+        }
+        occupied.push(row);
+      }
+
+      const visited = Array.from({ length: ys.length - 1 }, () => Array(xs.length - 1).fill(false));
+      const minSize = Math.max(cfg.minLeftoverCompartment, cfg.dividerThickness * 2);
+      let leftoverIndex = 1;
+      for (let yi = 0; yi < ys.length - 1; yi += 1) {
+        for (let xi = 0; xi < xs.length - 1; xi += 1) {
+          if (occupied[yi][xi] || visited[yi][xi]) continue;
+          let widthCells = 0;
+          while (xi + widthCells < xs.length - 1 && !occupied[yi][xi + widthCells] && !visited[yi][xi + widthCells]) {
+            widthCells += 1;
+          }
+          let heightCells = 1;
+          while (yi + heightCells < ys.length - 1) {
+            let canExtend = true;
+            for (let xj = xi; xj < xi + widthCells; xj += 1) {
+              if (occupied[yi + heightCells][xj] || visited[yi + heightCells][xj]) {
+                canExtend = false;
+                break;
+              }
+            }
+            if (!canExtend) break;
+            heightCells += 1;
+          }
+          for (let yj = yi; yj < yi + heightCells; yj += 1) {
+            for (let xj = xi; xj < xi + widthCells; xj += 1) {
+              visited[yj][xj] = true;
+            }
+          }
+          const x0 = xs[xi];
+          const x1 = xs[xi + widthCells];
+          const y0 = ys[yi];
+          const y1 = ys[yi + heightCells];
+          const moduleWidth = x1 - x0;
+          const moduleDepth = y1 - y0;
+          const cavityWidth = moduleWidth - cfg.dividerThickness;
+          const cavityDepth = moduleDepth - cfg.dividerThickness;
+          if (cavityWidth < minSize || cavityDepth < minSize) continue;
+          box.placements.push({
+            itemName: "empty",
+            itemIndex: leftoverIndex,
+            x: x0,
+            y: y0,
+            moduleWidth,
+            moduleDepth,
+            cavityWidth,
+            cavityDepth,
+            itemWidth: 0,
+            itemDepth: 0,
+            itemHeight: 0,
+            rotated: false,
+            extraAxis: "none",
+            isLeftover: true
+          });
+          leftoverIndex += 1;
+        }
+      }
+    }
+
+    function addBox(target, x0, y0, z0, x1, y1, z1) {
+      const box = {
+        x0: Math.min(x0, x1),
+        y0: Math.min(y0, y1),
+        z0: Math.min(z0, z1),
+        x1: Math.max(x0, x1),
+        y1: Math.max(y0, y1),
+        z1: Math.max(z0, z1)
+      };
+      if (box.x1 - box.x0 > EPS && box.y1 - box.y0 > EPS && box.z1 - box.z0 > EPS) {
+        target.push(box);
+      }
+    }
+
+    function cornerLBoxes(width, depth, leg, thickness, z0, z1) {
+      const boxes = [];
+      addBox(boxes, 0, 0, z0, leg, thickness, z1);
+      addBox(boxes, 0, 0, z0, thickness, leg, z1);
+      addBox(boxes, width - leg, 0, z0, width, thickness, z1);
+      addBox(boxes, width - thickness, 0, z0, width, leg, z1);
+      addBox(boxes, 0, depth - thickness, z0, leg, depth, z1);
+      addBox(boxes, 0, depth - leg, z0, thickness, depth, z1);
+      addBox(boxes, width - leg, depth - thickness, z0, width, depth, z1);
+      addBox(boxes, width - thickness, depth - leg, z0, width, depth, z1);
+      return boxes;
+    }
+
+    function buildSolids(box, cfg) {
+      const maxItemHeight = Math.max(1, ...box.placements.map((p) => p.itemHeight));
+      const wallTop = cfg.baseThickness + maxItemHeight + cfg.verticalClearance;
+      const totalHeight = wallTop + (cfg.addInterlock ? cfg.topLipHeight : 0);
+      const solids = [];
+      const voids = [];
+      const w = cfg.outerWidth;
+      const d = cfg.outerDepth;
+      const base = cfg.baseThickness;
+      const wall = cfg.wallThickness;
+      addBox(solids, 0, 0, 0, w, d, base);
+      addBox(solids, 0, 0, 0, wall, d, wallTop);
+      addBox(solids, w - wall, 0, 0, w, d, wallTop);
+      addBox(solids, 0, 0, 0, w, wall, wallTop);
+      addBox(solids, 0, d - wall, 0, w, d, wallTop);
+
+      const halfDivider = cfg.dividerThickness / 2;
+      box.placements.forEach((placement) => {
+        const x0 = wall + placement.x;
+        const y0 = wall + placement.y;
+        const x1 = x0 + placement.moduleWidth;
+        const y1 = y0 + placement.moduleDepth;
+        addBox(solids, x0, y0, base, x0 + halfDivider, y1, wallTop);
+        addBox(solids, x1 - halfDivider, y0, base, x1, y1, wallTop);
+        addBox(solids, x0, y0, base, x1, y0 + halfDivider, wallTop);
+        addBox(solids, x0, y1 - halfDivider, base, x1, y1, wallTop);
+      });
+
+      if (cfg.addInterlock) {
+        voids.push(...cornerLBoxes(w, d, cfg.interlockLegLength, cfg.bottomNotchThickness, 0, cfg.bottomNotchDepth));
+        solids.push(...cornerLBoxes(w, d, cfg.interlockLegLength, cfg.topLipThickness, wallTop, wallTop + cfg.topLipHeight));
+      }
+      return { solids, voids, totalHeight };
+    }
+
+    function meshFromBoxes(solids, voids) {
+      const allBoxes = solids.concat(voids);
+      const xs = sortedUnique(allBoxes.flatMap((b) => [b.x0, b.x1]));
+      const ys = sortedUnique(allBoxes.flatMap((b) => [b.y0, b.y1]));
+      const zs = sortedUnique(allBoxes.flatMap((b) => [b.z0, b.z1]));
+      const xMap = indexMap(xs);
+      const yMap = indexMap(ys);
+      const zMap = indexMap(zs);
+      const occupied = new Set();
+
+      function ranges(box) {
+        return {
+          xs: [xMap.get(keyOf(box.x0)), xMap.get(keyOf(box.x1))],
+          ys: [yMap.get(keyOf(box.y0)), yMap.get(keyOf(box.y1))],
+          zs: [zMap.get(keyOf(box.z0)), zMap.get(keyOf(box.z1))]
+        };
+      }
+
+      function fill(box, add) {
+        const r = ranges(box);
+        for (let ix = r.xs[0]; ix < r.xs[1]; ix += 1) {
+          for (let iy = r.ys[0]; iy < r.ys[1]; iy += 1) {
+            for (let iz = r.zs[0]; iz < r.zs[1]; iz += 1) {
+              const key = ix + "," + iy + "," + iz;
+              if (add) occupied.add(key);
+              else occupied.delete(key);
+            }
+          }
+        }
+      }
+
+      solids.forEach((box) => fill(box, true));
+      voids.forEach((box) => fill(box, false));
+
+      const triangles = [];
+      const has = (ix, iy, iz) => occupied.has(ix + "," + iy + "," + iz);
+      const addQuad = (n, q) => {
+        triangles.push({ n, a: q[0], b: q[1], c: q[2] });
+        triangles.push({ n, a: q[0], b: q[2], c: q[3] });
+      };
+
+      Array.from(occupied).sort().forEach((cell) => {
+        const parts = cell.split(",").map(Number);
+        const ix = parts[0];
+        const iy = parts[1];
+        const iz = parts[2];
+        const x0 = xs[ix], x1 = xs[ix + 1];
+        const y0 = ys[iy], y1 = ys[iy + 1];
+        const z0 = zs[iz], z1 = zs[iz + 1];
+        if (!has(ix - 1, iy, iz)) addQuad([-1, 0, 0], [[x0, y0, z0], [x0, y0, z1], [x0, y1, z1], [x0, y1, z0]]);
+        if (!has(ix + 1, iy, iz)) addQuad([1, 0, 0], [[x1, y0, z0], [x1, y1, z0], [x1, y1, z1], [x1, y0, z1]]);
+        if (!has(ix, iy - 1, iz)) addQuad([0, -1, 0], [[x0, y0, z0], [x1, y0, z0], [x1, y0, z1], [x0, y0, z1]]);
+        if (!has(ix, iy + 1, iz)) addQuad([0, 1, 0], [[x0, y1, z0], [x0, y1, z1], [x1, y1, z1], [x1, y1, z0]]);
+        if (!has(ix, iy, iz - 1)) addQuad([0, 0, -1], [[x0, y0, z0], [x0, y1, z0], [x1, y1, z0], [x1, y0, z0]]);
+        if (!has(ix, iy, iz + 1)) addQuad([0, 0, 1], [[x0, y0, z1], [x1, y0, z1], [x1, y1, z1], [x0, y1, z1]]);
+      });
+
+      if (!triangles.length) throw new Error("No STL mesh was generated.");
+      return triangles;
+    }
+
+    function keyOf(value) {
+      return String(Math.round(value * 1000000));
+    }
+
+    function indexMap(values) {
+      const map = new Map();
+      values.forEach((value, index) => map.set(keyOf(value), index));
+      return map;
+    }
+
+    function stlText(name, triangles) {
+      const lines = ["solid " + name];
+      triangles.forEach((tri) => {
+        lines.push("  facet normal " + fmtStl(tri.n[0]) + " " + fmtStl(tri.n[1]) + " " + fmtStl(tri.n[2]));
+        lines.push("    outer loop");
+        [tri.a, tri.b, tri.c].forEach((v) => {
+          lines.push("      vertex " + fmtStl(v[0]) + " " + fmtStl(v[1]) + " " + fmtStl(v[2]));
+        });
+        lines.push("    endloop");
+        lines.push("  endfacet");
+      });
+      lines.push("endsolid " + name);
+      return lines.join("\n");
+    }
+
+    function fmtStl(value) {
+      return Number(value).toFixed(6);
+    }
+
+    function generateLayoutSvg(box, cfg, totalHeight) {
+      const palette = ["#65c7f7", "#f2b84b", "#39d98a", "#ff8a65", "#b792f7", "#f0708d", "#9bd66d", "#80cbc4"];
+      const colorByName = new Map();
+      const colorFor = (placement) => {
+        if (placement.isLeftover) return "#22272d";
+        if (!colorByName.has(placement.itemName)) {
+          colorByName.set(placement.itemName, palette[colorByName.size % palette.length]);
+        }
+        return colorByName.get(placement.itemName);
+      };
+      const parts = [
+        `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 ${cfg.outerWidth} ${cfg.outerDepth}" role="img">`,
+        `<rect x="0" y="0" width="${cfg.outerWidth}" height="${cfg.outerDepth}" fill="#080a0c" stroke="#78837d" stroke-width="0.5"/>`,
+        `<rect x="${cfg.wallThickness}" y="${cfg.wallThickness}" width="${cfg.innerWidth}" height="${cfg.innerDepth}" fill="#101316" stroke="#454c54" stroke-width="0.35"/>`
+      ];
+      box.placements.forEach((placement) => {
+        const x = cfg.wallThickness + placement.x;
+        const y = cfg.wallThickness + placement.y;
+        const fill = colorFor(placement);
+        const stroke = placement.isLeftover ? "#454c54" : "#e8f1ec";
+        parts.push(`<rect x="${x}" y="${y}" width="${placement.moduleWidth}" height="${placement.moduleDepth}" fill="${fill}" fill-opacity="${placement.isLeftover ? "0.42" : "0.78"}" stroke="${stroke}" stroke-width="0.32"/>`);
+        parts.push(`<rect x="${x + cfg.dividerThickness / 2}" y="${y + cfg.dividerThickness / 2}" width="${placement.cavityWidth}" height="${placement.cavityDepth}" fill="none" stroke="#0b0d10" stroke-width="0.22" stroke-dasharray="0.9 0.9"/>`);
+        if (placement.moduleWidth >= 18 && placement.moduleDepth >= 10) {
+          const label = placement.isLeftover ? "empty" : placement.itemName;
+          parts.push(`<text x="${x + 2}" y="${y + 5}" font-size="3.3" font-family="Arial, sans-serif" fill="#f7fbf8">${escapeHtml(label)}</text>`);
+          parts.push(`<text x="${x + 2}" y="${y + 9}" font-size="2.65" font-family="Arial, sans-serif" fill="#d7ded9">${fmt(placement.cavityWidth, 1)}x${fmt(placement.cavityDepth, 1)} h${fmt(placement.itemHeight, 1)}</text>`);
+        }
+      });
+      parts.push(`<text x="${cfg.wallThickness}" y="${cfg.outerDepth - 2.8}" font-size="2.8" font-family="Arial, sans-serif" fill="#a9b4ad">Box ${box.number}, ${fmt(cfg.outerWidth, 0)}x${fmt(cfg.outerDepth, 0)}, H ${fmt(totalHeight, 1)} mm</text>`);
+      parts.push("</svg>");
+      return parts.join("");
+    }
+
+    function placementToSummary(placement, cfg) {
+      return {
+        name: placement.itemName,
+        index: placement.itemIndex,
+        is_leftover: placement.isLeftover,
+        module_x: round3(placement.x),
+        module_y: round3(placement.y),
+        module_width: round3(placement.moduleWidth),
+        module_depth: round3(placement.moduleDepth),
+        cavity_x: round3(cfg.wallThickness + placement.x + cfg.dividerThickness / 2),
+        cavity_y: round3(cfg.wallThickness + placement.y + cfg.dividerThickness / 2),
+        cavity_width: round3(placement.cavityWidth),
+        cavity_depth: round3(placement.cavityDepth),
+        item_height: round3(placement.itemHeight),
+        rotated: placement.rotated,
+        extra_axis: placement.extraAxis
+      };
+    }
+
+    function round3(value) {
+      return Math.round(value * 1000) / 1000;
+    }
+
+    function revokeDownloads() {
+      state.downloads.forEach((download) => URL.revokeObjectURL(download.url));
+      state.downloads = [];
+      if (state.lastSummaryUrl) {
+        URL.revokeObjectURL(state.lastSummaryUrl);
+        state.lastSummaryUrl = null;
+      }
+    }
+
+    function downloadUrl(text, type, fileName) {
+      const blob = new Blob([text], { type });
+      const url = URL.createObjectURL(blob);
+      state.downloads.push({ url, fileName });
+      return url;
+    }
+
+    function generateAll() {
+      try {
+        if (!state.items.length) throw new Error("Add at least one item.");
+        const cfg = readConfig();
+        revokeDownloads();
+        const packed = packItems(state.items.map(cloneItem), cfg);
+        const results = [];
+        const summary = {
+          settings: {
+            outer_width: cfg.outerWidth,
+            outer_depth: cfg.outerDepth,
+            base_thickness: cfg.baseThickness,
+            wall_thickness: cfg.wallThickness,
+            divider_thickness: cfg.dividerThickness,
+            side_clearance: cfg.sideClearance,
+            extra_clearance: cfg.extraClearance,
+            default_extra_axis: cfg.defaultExtraAxis,
+            vertical_clearance: cfg.verticalClearance,
+            add_leftover_compartments: cfg.addLeftoverCompartments,
+            add_interlock: cfg.addInterlock,
+            interlock_leg_length: cfg.interlockLegLength,
+            bottom_notch_depth: cfg.bottomNotchDepth,
+            bottom_notch_thickness: cfg.bottomNotchThickness,
+            top_lip_height: cfg.topLipHeight,
+            top_lip_thickness: cfg.topLipThickness
+          },
+          boxes: []
+        };
+
+        packed.forEach((box) => {
+          const meshSource = buildSolids(box, cfg);
+          const name = "compartment_box_" + String(box.number).padStart(2, "0");
+          const triangles = meshFromBoxes(meshSource.solids, meshSource.voids);
+          const stl = stlText(name, triangles);
+          const svg = generateLayoutSvg(box, cfg, meshSource.totalHeight);
+          const stlUrl = downloadUrl(stl, "model/stl", name + ".stl");
+          const svgUrl = downloadUrl(svg, "image/svg+xml", name + "_layout.svg");
+          const result = {
+            box,
+            name,
+            stlUrl,
+            svgUrl,
+            svg,
+            totalHeight: meshSource.totalHeight,
+            triangles: triangles.length,
+            itemCompartments: box.placements.filter((p) => !p.isLeftover).length,
+            leftoverCompartments: box.placements.filter((p) => p.isLeftover).length
+          };
+          results.push(result);
+          summary.boxes.push({
+            number: box.number,
+            stl: name + ".stl",
+            layout_svg: name + "_layout.svg",
+            outer_width: cfg.outerWidth,
+            outer_depth: cfg.outerDepth,
+            total_height: round3(meshSource.totalHeight),
+            item_compartments: result.itemCompartments,
+            leftover_compartments: result.leftoverCompartments,
+            triangle_count: triangles.length,
+            placements: box.placements.map((p) => placementToSummary(p, cfg))
+          });
+        });
+
+        const summaryText = JSON.stringify(summary, null, 2);
+        state.lastSummaryUrl = URL.createObjectURL(new Blob([summaryText], { type: "application/json" }));
+        renderResults(results);
+        const itemCount = totalItemCount();
+        setStatus(
+          "<strong>" + results.length + " STL " + plural(results.length, "file") + "</strong> generated from " +
+          itemCount + " " + plural(itemCount, "item") + ".",
+          "ok"
+        );
+      } catch (error) {
+        renderResults([]);
+        $("boxCounter").textContent = "error";
+        setStatus(escapeHtml(error.message || String(error)), "error");
+      }
+    }
+
+    function renderResults(results) {
+      const root = $("results");
+      root.innerHTML = "";
+      if (!results.length) {
+        root.innerHTML = `<div class="empty-state">Generated boxes will appear here.</div>`;
+        return;
+      }
+      $("boxCounter").textContent = results.length + " STL " + plural(results.length, "file");
+      results.forEach((result) => {
+        const div = document.createElement("article");
+        div.className = "result";
+        div.innerHTML = `
+          <div class="result-head">
+            <div>
+              <h3>${escapeHtml(result.name)}</h3>
+              <div class="result-meta">
+                <span class="tag">${fmt(result.totalHeight, 1)} mm high</span>
+                <span class="tag">${result.itemCompartments} item ${plural(result.itemCompartments, "compartment")}</span>
+                <span class="tag">${result.leftoverCompartments} empty ${plural(result.leftoverCompartments, "compartment")}</span>
+                <span class="tag">${result.triangles} ${plural(result.triangles, "triangle")}</span>
+              </div>
+            </div>
+          </div>
+          <div class="preview">${result.svg}</div>
+          <div class="download-row">
+            <a class="button-link" href="${result.stlUrl}" download="${result.name}.stl">Download STL</a>
+            <a class="button-link" href="${result.svgUrl}" download="${result.name}_layout.svg">Layout</a>
+            <a class="button-link" href="${state.lastSummaryUrl}" download="compartment_box_summary.json">JSON</a>
+          </div>
+        `;
+        root.appendChild(div);
+      });
+    }
+
+    function loadSample() {
+      state.items = sampleItems.map(cloneItem);
+      renderItems();
+      generateAll();
+    }
+
+    $("addItemBtn").addEventListener("click", () => {
+      try {
+        addItemFromForm();
+      } catch (error) {
+        setStatus(escapeHtml(error.message || String(error)), "error");
+      }
+    });
+
+    $("clearItemsBtn").addEventListener("click", () => {
+      state.items = [];
+      renderItems();
+      renderResults([]);
+      $("boxCounter").textContent = "not generated";
+      setStatus("List cleared.", "");
+    });
+
+    $("loadSampleBtn").addEventListener("click", loadSample);
+    $("generateBtn").addEventListener("click", generateAll);
+
+    loadSample();
+  </script>
+</body>
+</html>
