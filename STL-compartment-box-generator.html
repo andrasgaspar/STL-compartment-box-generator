@@ -292,7 +292,7 @@
     table {
       width: 100%;
       border-collapse: collapse;
-      min-width: 760px;
+      min-width: 900px;
     }
 
     th,
@@ -496,6 +496,14 @@
                 <input id="extraClearance" type="number" min="0" step="0.1" value="8">
               </div>
               <div class="field">
+                <label for="lazyEdgeRange">Lazy edge range</label>
+                <input id="lazyEdgeRange" type="number" min="0" step="0.1" value="6">
+              </div>
+              <div class="field">
+                <label for="lazyExtraRange">Lazy extra range</label>
+                <input id="lazyExtraRange" type="number" min="0" step="0.1" value="6">
+              </div>
+              <div class="field">
                 <label for="verticalClearance">Height clearance</label>
                 <input id="verticalClearance" type="number" min="0" step="0.1" value="0">
               </div>
@@ -580,6 +588,14 @@
                   <option value="none">none</option>
                 </select>
               </div>
+              <div class="field wide">
+                <label for="itemLazyMode">Lazy fit</label>
+                <select id="itemLazyMode">
+                  <option value="edges">all edges</option>
+                  <option value="extra">extra only</option>
+                  <option value="fixed">off</option>
+                </select>
+              </div>
               <label class="check-row" for="itemRotate">
                 <input id="itemRotate" type="checkbox" checked>
                 Rotatable
@@ -609,6 +625,7 @@
                     <th>Footprint</th>
                     <th>Height</th>
                     <th>Extra</th>
+                    <th>Lazy</th>
                     <th>Rotation</th>
                     <th></th>
                   </tr>
@@ -646,10 +663,10 @@
     };
 
     const sampleItems = [
-      { name: "Item_A", count: 8, width: 32, depth: 18, height: 12, extraAxis: "auto", rotate: true },
-      { name: "Item_B", count: 6, width: 45, depth: 28, height: 18, extraAxis: "depth", rotate: true },
-      { name: "Item_C", count: 4, width: 60, depth: 22, height: 15, extraAxis: "width", rotate: true },
-      { name: "Item_D", count: 2, width: 85, depth: 40, height: 25, extraAxis: "auto", rotate: true }
+      { name: "Item_A", count: 8, width: 32, depth: 18, height: 12, extraAxis: "auto", lazyMode: "edges", rotate: true },
+      { name: "Item_B", count: 6, width: 45, depth: 28, height: 18, extraAxis: "depth", lazyMode: "edges", rotate: true },
+      { name: "Item_C", count: 4, width: 60, depth: 22, height: 15, extraAxis: "width", lazyMode: "extra", rotate: true },
+      { name: "Item_D", count: 2, width: 85, depth: 40, height: 25, extraAxis: "auto", lazyMode: "edges", rotate: true }
     ];
 
     function readNumber(id, label) {
@@ -685,6 +702,8 @@
         dividerThickness: readPositive("dividerThickness", "Divider"),
         sideClearance: readNonNegative("sideClearance", "Side clearance"),
         extraClearance: readNonNegative("extraClearance", "Extra clearance"),
+        lazyEdgeRange: readNonNegative("lazyEdgeRange", "Lazy edge range"),
+        lazyExtraRange: readNonNegative("lazyExtraRange", "Lazy extra range"),
         verticalClearance: readNonNegative("verticalClearance", "Height clearance"),
         defaultExtraAxis: normalizeAxis($("defaultExtraAxis").value),
         addLeftoverCompartments: $("addLeftoverCompartments").checked,
@@ -725,6 +744,27 @@
       return aliases[text];
     }
 
+    function normalizeLazyMode(value) {
+      const text = String(value || "fixed").trim().toLowerCase();
+      const aliases = {
+        off: "fixed",
+        none: "fixed",
+        fixed: "fixed",
+        extra: "extra",
+        extra_only: "extra",
+        "extra only": "extra",
+        lazy_extra: "extra",
+        edges: "edges",
+        all_edges: "edges",
+        "all edges": "edges",
+        lazy_edges: "edges"
+      };
+      if (!aliases[text]) {
+        throw new Error("Unknown lazy fit: " + value);
+      }
+      return aliases[text];
+    }
+
     function setStatus(text, kind) {
       const node = $("status");
       node.className = "status" + (kind ? " " + kind : "");
@@ -754,6 +794,7 @@
         depth: Number(item.depth),
         height: Number(item.height),
         extraAxis: normalizeAxis(item.extraAxis),
+        lazyMode: normalizeLazyMode(item.lazyMode),
         rotate: Boolean(item.rotate)
       };
     }
@@ -768,6 +809,7 @@
         depth: readPositive("itemDepth", "Depth"),
         height: readPositive("itemHeight", "Height"),
         extraAxis: normalizeAxis($("itemExtraAxis").value),
+        lazyMode: normalizeLazyMode($("itemLazyMode").value),
         rotate: $("itemRotate").checked
       };
       state.items.push(item);
@@ -786,6 +828,7 @@
           <td class="num">${fmt(item.width)} x ${fmt(item.depth)} mm</td>
           <td class="num">${fmt(item.height)} mm</td>
           <td><span class="tag">${escapeHtml(axisLabel(item.extraAxis))}</span></td>
+          <td><span class="tag">${escapeHtml(lazyModeLabel(item.lazyMode))}</span></td>
           <td>${item.rotate ? "yes" : "no"}</td>
           <td><button class="danger" type="button" data-remove="${index}">Delete</button></td>
         `;
@@ -823,6 +866,14 @@
       }[axis] || axis;
     }
 
+    function lazyModeLabel(mode) {
+      return {
+        fixed: "off",
+        extra: "extra only",
+        edges: "all edges"
+      }[mode] || mode;
+    }
+
     function extraAxisOptions(axis, width, depth) {
       if (axis === "auto") return ["width", "depth"];
       if (axis === "longer") return [width >= depth ? "width" : "depth"];
@@ -840,9 +891,21 @@
         const addD = axis === "depth" ? cfg.extraClearance : 0;
         const cavityW = instance.width + 2 * cfg.sideClearance + addW;
         const cavityD = instance.depth + 2 * cfg.sideClearance + addD;
-        const orientations = [{ cw: cavityW, cd: cavityD, rotated: false }];
+        const orientations = [{
+          cw: cavityW,
+          cd: cavityD,
+          rotated: false,
+          extraOnWidth: addW > EPS,
+          extraOnDepth: addD > EPS
+        }];
         if (instance.rotate) {
-          orientations.push({ cw: cavityD, cd: cavityW, rotated: true });
+          orientations.push({
+            cw: cavityD,
+            cd: cavityW,
+            rotated: true,
+            extraOnWidth: addD > EPS,
+            extraOnDepth: addW > EPS
+          });
         }
         orientations.forEach((orientation) => {
           const candidate = {
@@ -851,7 +914,10 @@
             moduleWidth: orientation.cw + cfg.dividerThickness,
             moduleDepth: orientation.cd + cfg.dividerThickness,
             rotated: orientation.rotated,
-            extraAxis: axis
+            extraAxis: axis,
+            extraOnWidth: orientation.extraOnWidth,
+            extraOnDepth: orientation.extraOnDepth,
+            lazyMode: normalizeLazyMode(instance.lazyMode)
           };
           const key = [
             Math.round(candidate.cavityWidth * 1000),
@@ -859,7 +925,10 @@
             Math.round(candidate.moduleWidth * 1000),
             Math.round(candidate.moduleDepth * 1000),
             candidate.rotated ? 1 : 0,
-            candidate.extraAxis
+            candidate.extraAxis,
+            candidate.extraOnWidth ? 1 : 0,
+            candidate.extraOnDepth ? 1 : 0,
+            candidate.lazyMode
           ].join(":");
           if (!seen.has(key)) {
             seen.add(key);
@@ -881,6 +950,7 @@
             depth: item.depth,
             height: item.height,
             extraAxis: item.extraAxis,
+            lazyMode: item.lazyMode,
             rotate: item.rotate
           });
         }
@@ -933,21 +1003,53 @@
       return false;
     }
 
-    function findBestPosition(box, candidates) {
+    function canLazyAxis(candidate, axis) {
+      if (candidate.lazyMode === "edges") return true;
+      if (candidate.lazyMode === "extra") return axis === "width" ? candidate.extraOnWidth : candidate.extraOnDepth;
+      return false;
+    }
+
+    function lazyRangeForAxis(candidate, axis, cfg) {
+      if (!canLazyAxis(candidate, axis)) return 0;
+      const isExtraAxis = axis === "width" ? candidate.extraOnWidth : candidate.extraOnDepth;
+      return isExtraAxis ? cfg.lazyExtraRange : cfg.lazyEdgeRange;
+    }
+
+    function fitCandidateToFreeRect(candidate, free, cfg) {
+      const fitted = { ...candidate, lazyWidth: 0, lazyDepth: 0 };
+      const leftoverX = free.w - fitted.moduleWidth;
+      const leftoverY = free.d - fitted.moduleDepth;
+      const lazyWidthRange = lazyRangeForAxis(fitted, "width", cfg);
+      const lazyDepthRange = lazyRangeForAxis(fitted, "depth", cfg);
+      if (leftoverX > EPS && leftoverX <= lazyWidthRange + EPS) {
+        fitted.moduleWidth = free.w;
+        fitted.cavityWidth += leftoverX;
+        fitted.lazyWidth = leftoverX;
+      }
+      if (leftoverY > EPS && leftoverY <= lazyDepthRange + EPS) {
+        fitted.moduleDepth = free.d;
+        fitted.cavityDepth += leftoverY;
+        fitted.lazyDepth = leftoverY;
+      }
+      return fitted;
+    }
+
+    function findBestPosition(box, candidates, cfg) {
       let best = null;
       box.freeRects.forEach((free) => {
         candidates.forEach((candidate) => {
           if (candidate.moduleWidth <= free.w + EPS && candidate.moduleDepth <= free.d + EPS) {
-            const leftoverX = free.w - candidate.moduleWidth;
-            const leftoverY = free.d - candidate.moduleDepth;
+            const fitted = fitCandidateToFreeRect(candidate, free, cfg);
+            const leftoverX = free.w - fitted.moduleWidth;
+            const leftoverY = free.d - fitted.moduleDepth;
             const score = [
-              free.area - candidate.moduleWidth * candidate.moduleDepth,
+              free.area - fitted.moduleWidth * fitted.moduleDepth,
               Math.min(leftoverX, leftoverY),
               Math.max(leftoverX, leftoverY)
             ];
-            const used = rect(free.x, free.y, candidate.moduleWidth, candidate.moduleDepth);
+            const used = rect(free.x, free.y, fitted.moduleWidth, fitted.moduleDepth);
             if (!best || scoreLess(score, best.score)) {
-              best = { score, used, candidate };
+              best = { score, used, candidate: fitted };
             }
           }
         });
@@ -970,6 +1072,9 @@
         itemHeight: instance.height,
         rotated: candidate.rotated,
         extraAxis: candidate.extraAxis,
+        lazyMode: candidate.lazyMode,
+        lazyWidth: candidate.lazyWidth,
+        lazyDepth: candidate.lazyDepth,
         isLeftover: false
       });
       const updated = [];
@@ -1003,7 +1108,7 @@
         let bestBox = null;
         let bestPosition = null;
         packed.forEach((box) => {
-          const position = findBestPosition(box, possible);
+          const position = findBestPosition(box, possible, cfg);
           if (position && (!bestPosition || scoreLess(position.score, bestPosition.score))) {
             bestBox = box;
             bestPosition = position;
@@ -1017,7 +1122,7 @@
             placements: []
           };
           packed.push(bestBox);
-          bestPosition = findBestPosition(bestBox, possible);
+          bestPosition = findBestPosition(bestBox, possible, cfg);
           if (!bestPosition) {
             throw new Error(instance.name + " cannot be placed in a new box.");
           }
@@ -1310,7 +1415,10 @@
         cavity_depth: round3(placement.cavityDepth),
         item_height: round3(placement.itemHeight),
         rotated: placement.rotated,
-        extra_axis: placement.extraAxis
+        extra_axis: placement.extraAxis,
+        lazy_mode: placement.lazyMode || "fixed",
+        lazy_width: round3(placement.lazyWidth || 0),
+        lazy_depth: round3(placement.lazyDepth || 0)
       };
     }
 
@@ -1350,6 +1458,8 @@
             divider_thickness: cfg.dividerThickness,
             side_clearance: cfg.sideClearance,
             extra_clearance: cfg.extraClearance,
+            lazy_edge_range: cfg.lazyEdgeRange,
+            lazy_extra_range: cfg.lazyExtraRange,
             default_extra_axis: cfg.defaultExtraAxis,
             vertical_clearance: cfg.verticalClearance,
             add_leftover_compartments: cfg.addLeftoverCompartments,
