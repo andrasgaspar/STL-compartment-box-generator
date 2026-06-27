@@ -19,7 +19,7 @@ Click **Generate STL** and check the generated layout before printing.
 - Item-first: enter counts and dimensions instead of drawing dividers by hand.
 - Fast output: one printable STL per generated box.
 - Built-in checks: layout SVG and JSON placement summary.
-- Practical options: rotation, clearances, engraved compartment labels, separate lazy edge ranges, leftover compartments, and L-shaped stacking fit.
+- Practical options: rotation, clearances, engraved compartment labels, configurable box IDs, separate lazy edge ranges, leftover compartments, and L-shaped stacking fit.
 - Local: everything runs in the browser from a single HTML file.
 
 ## Exports

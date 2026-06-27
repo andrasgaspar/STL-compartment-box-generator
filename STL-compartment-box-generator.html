@@ -536,6 +536,10 @@
                 <input id="engravingTextHeight" type="number" min="0.1" step="0.1" value="6">
               </div>
               <div class="field">
+                <label for="boxNumberStart">Box numbering starts at</label>
+                <input id="boxNumberStart" type="number" min="1" step="1" value="1">
+              </div>
+              <div class="field">
                 <label for="defaultExtraAxis">Default extra axis</label>
                 <select id="defaultExtraAxis">
                   <option value="auto">auto</option>
@@ -557,7 +561,7 @@
             </label>
             <label class="check-row" for="addEngraving">
               <input id="addEngraving" type="checkbox" checked>
-              Engrave compartment labels
+              Engrave labels and box ID
             </label>
           </div>
         </section>
@@ -757,6 +761,14 @@
       return value;
     }
 
+    function readPositiveInteger(id, label) {
+      const value = readPositive(id, label);
+      if (!Number.isInteger(value)) {
+        throw new Error(label + " must be a whole number.");
+      }
+      return value;
+    }
+
     function readConfig() {
       const cfg = {
         outerWidth: readPositive("outerWidth", "Outer width"),
@@ -780,7 +792,8 @@
         topLipThickness: readNonNegative("topLipThickness", "Top L thickness"),
         addEngraving: $("addEngraving").checked,
         engravingDepth: readNonNegative("engravingDepth", "Engraving depth"),
-        engravingTextHeight: readNonNegative("engravingTextHeight", "Engraving text height")
+        engravingTextHeight: readNonNegative("engravingTextHeight", "Engraving text height"),
+        boxNumberStart: readPositiveInteger("boxNumberStart", "Box numbering start")
       };
       cfg.innerWidth = cfg.outerWidth - 2 * cfg.wallThickness;
       cfg.innerDepth = cfg.outerDepth - 2 * cfg.wallThickness;
@@ -1195,7 +1208,7 @@
 
         if (!bestBox || !bestPosition) {
           bestBox = {
-            number: packed.length + 1,
+            number: cfg.boxNumberStart + packed.length,
             freeRects: [rect(0, 0, cfg.innerWidth, cfg.innerDepth)],
             placements: []
           };
@@ -1468,11 +1481,82 @@
       }));
     }
 
+    function fitBoxIdEngraving(box, cfg, wallTop) {
+      if (!cfg.addEngraving) return null;
+      const text = normalizeEngravingText(String(box.number), String(box.number));
+      const cols = engravingColumnCount(text);
+      const verticalMargin = Math.min(3, Math.max(1, (wallTop - cfg.baseThickness) * 0.18));
+      const availableWidth = Math.max(0, cfg.outerWidth - 2 * Math.max(4, cfg.wallThickness * 2));
+      const availableHeight = Math.max(0, wallTop - cfg.baseThickness - 2 * verticalMargin);
+      const cell = Math.min(
+        cfg.engravingTextHeight / ENGRAVING_ROWS,
+        availableWidth / cols,
+        availableHeight / ENGRAVING_ROWS
+      );
+      const cutDepth = Math.min(cfg.engravingDepth, Math.max(EPS, cfg.wallThickness - EPS));
+      if (!text || cell <= ENGRAVING_MIN_CELL || cutDepth <= EPS) return null;
+
+      const width = cols * cell;
+      const height = ENGRAVING_ROWS * cell;
+      return {
+        text,
+        side: "front",
+        cell,
+        x: (cfg.outerWidth - width) / 2,
+        y: 0,
+        z: cfg.baseThickness + verticalMargin + (availableHeight - height) / 2,
+        width,
+        height,
+        cutDepth
+      };
+    }
+
+    function boxIdEngravingRects(engraving) {
+      const rows = engravingRows(engraving.text);
+      const rects = [];
+      rows.forEach((row, rowIndex) => {
+        let runStart = null;
+        for (let col = 0; col <= row.length; col += 1) {
+          const active = row[col] === "1";
+          if (active && runStart === null) {
+            runStart = col;
+          } else if (!active && runStart !== null) {
+            const logicalX = runStart * engraving.cell;
+            const logicalY = rowIndex * engraving.cell;
+            const runWidth = (col - runStart) * engraving.cell;
+            rects.push({
+              x: engraving.x + logicalX,
+              y: engraving.y,
+              z: engraving.z + engraving.height - logicalY - engraving.cell,
+              w: runWidth,
+              d: engraving.cutDepth,
+              h: engraving.cell
+            });
+            runStart = null;
+          }
+        }
+      });
+      return rects;
+    }
+
+    function addBoxIdEngraving(box, cfg, wallTop, voids) {
+      const engraving = fitBoxIdEngraving(box, cfg, wallTop);
+      if (!engraving) {
+        delete box.sideEngraving;
+        return;
+      }
+      box.sideEngraving = engraving;
+      boxIdEngravingRects(engraving).forEach((r) => {
+        addBox(voids, r.x, r.y, r.z, r.x + r.w, r.y + r.d, r.z + r.h);
+      });
+    }
+
     function addEngravingVoids(box, cfg, voids) {
       if (!cfg.addEngraving) {
         box.placements.forEach((placement) => {
           delete placement.engraving;
         });
+        delete box.sideEngraving;
         return;
       }
       box.placements.forEach((placement) => {
@@ -1517,6 +1601,7 @@
       });
 
       addEngravingVoids(box, cfg, voids);
+      addBoxIdEngraving(box, cfg, wallTop, voids);
 
       if (cfg.addInterlock) {
         voids.push(...cornerLBoxes(w, d, cfg.interlockLegLength, cfg.bottomNotchThickness, 0, cfg.bottomNotchDepth));
@@ -1630,6 +1715,9 @@
         `<rect x="0" y="0" width="${cfg.outerWidth}" height="${cfg.outerDepth}" fill="#080a0c" stroke="#78837d" stroke-width="0.5"/>`,
         `<rect x="${cfg.wallThickness}" y="${cfg.wallThickness}" width="${cfg.innerWidth}" height="${cfg.innerDepth}" fill="#101316" stroke="#454c54" stroke-width="0.35"/>`
       ];
+      if (box.sideEngraving) {
+        parts.push(`<text x="${cfg.outerWidth / 2}" y="${Math.max(5, cfg.wallThickness + 3)}" text-anchor="middle" font-size="3.2" font-family="Arial, sans-serif" font-weight="700" fill="#f7fbf8">#${box.number}</text>`);
+      }
       box.placements.forEach((placement) => {
         const x = cfg.wallThickness + placement.x;
         const y = cfg.wallThickness + placement.y;
@@ -1686,6 +1774,20 @@
       };
     }
 
+    function sideEngravingToSummary(box) {
+      if (!box.sideEngraving) return null;
+      return {
+        text: box.sideEngraving.text,
+        side: box.sideEngraving.side,
+        x: round3(box.sideEngraving.x),
+        y: round3(box.sideEngraving.y),
+        z: round3(box.sideEngraving.z),
+        width: round3(box.sideEngraving.width),
+        height: round3(box.sideEngraving.height),
+        cut_depth: round3(box.sideEngraving.cutDepth)
+      };
+    }
+
     function round3(value) {
       return Math.round(value * 1000) / 1000;
     }
@@ -1735,7 +1837,8 @@
             top_lip_thickness: cfg.topLipThickness,
             add_engraving: cfg.addEngraving,
             engraving_depth: cfg.engravingDepth,
-            engraving_text_height: cfg.engravingTextHeight
+            engraving_text_height: cfg.engravingTextHeight,
+            box_number_start: cfg.boxNumberStart
           },
           boxes: []
         };
@@ -1771,6 +1874,7 @@
             item_compartments: result.itemCompartments,
             leftover_compartments: result.leftoverCompartments,
             engraved_compartments: result.engravedCompartments,
+            side_engraving: sideEngravingToSummary(box),
             triangle_count: triangles.length,
             placements: box.placements.map((p) => placementToSummary(p, cfg))
           });
