@@ -6,7 +6,7 @@ Design custom organizer boxes from the items you already have. Add dimensions, g
 
 ## Use It
 
-Open [STL-compartment-box-generator.html](./STL-compartment-box-generator.html), tune the box, and add the things you want to store.
+Open [index.html](./index.html), tune the box, and add the things you want to store.
 
 ![Box settings and item entry screenshot](docs/usage-settings-and-items.png)
 
